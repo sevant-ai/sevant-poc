@@ -1,19 +1,25 @@
+# This docker-compose is only to get started with the Sevant Registry.
+# It is starting the Registry and a n8n instance, as well as connecting to a Mongodb instance.
+# Mongodb is used to save your specifications as well as workflows.
+
+# Go to http://localhost:3000 when started
+
+####################################################################################################
+# DO NOT USE IT IN PRODUCTION
+####################################################################################################
+
 services:
   backend:
     build:
       context: ./backend
       dockerfile: ../sevant-registry-docker/backend/Dockerfile
-    image: analyticsavant/sevant-registry-backend:latest
+    image: analyticsavant/sevant-registry-backend:v6
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=production
-      - MONGODB_URI=mongodb+srv://sevant-demo:demomenow@sevant-demo.zj0ssao.mongodb.net/sevant?replicaSet=atlas-xriann-shard-0
-      - SWAGGER_API_BASE_URL=https://api.swaggerhub.com/
-      - SENDGRID_API_KEY=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
-      - EMAIL_FROM=info@sevant.ai
+      - NODE_ENV=production      
+      - SWAGGER_API_BASE_URL=https://api.swaggerhub.com/     
       - JWT_SECRET=jwtsecret
-      - ANTHROPIC_API_KEY=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
       - N8N_URL=http://n8n:5678
       - FORGET_PASSWORD_BASE_URL_SERVER=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}/
     restart: unless-stopped
@@ -35,7 +41,7 @@ services:
     build:
       context: ./frontend
       dockerfile: ../sevant-registry-docker/frontend/Dockerfile
-    image: analyticsavant/sevant-registry-frontend:latest
+    image: analyticsavant/sevant-registry-frontend:v6
     ports:
       - "3000:3000"
     environment:
