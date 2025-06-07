@@ -9,11 +9,32 @@
 ####################################################################################################
 
 services:
+  mongodb:
+    image: mongo:5.0
+    container_name: sevant-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
   backend:
     build:
       context: ./backend
       dockerfile: ../sevant-registry-docker/backend/Dockerfile
-    image: analyticsavant/sevant-registry-backend:v6
+    image: analyticsavant/sevant-registry-backend:v7
     ports:
       - "3001:3001"
     environment:
@@ -22,6 +43,13 @@ services:
       - JWT_SECRET=jwtsecret
       - N8N_URL=http://n8n:5678
       - FORGET_PASSWORD_BASE_URL_SERVER=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}/
+      # MongoDB connection with authentication
+      - MONGODB_URI=mongodb://admin:password123@sevant-mongodb:27017/sevant_registry?authSource=admin
+      - DB_HOST=sevant-mongodb
+      - DB_PORT=27017
+      - DB_NAME=sevant_registry
+      - DB_USER=admin
+      - DB_PASSWORD=password123
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
@@ -35,13 +63,16 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     depends_on:
-      - n8n
+      mongodb:
+        condition: service_healthy
+      n8n:
+        condition: service_started
 
   frontend:
     build:
       context: ./frontend
       dockerfile: ../sevant-registry-docker/frontend/Dockerfile
-    image: analyticsavant/sevant-registry-frontend:v6
+    image: analyticsavant/sevant-registry-frontend:v7
     ports:
       - "3000:3000"
     environment:
@@ -99,12 +130,6 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 networks:
   app-network:
@@ -112,5 +137,4 @@ networks:
 
 volumes:
   n8n_data:
-
-
+  mongodb_data:
