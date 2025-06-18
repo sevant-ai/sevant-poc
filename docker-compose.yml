@@ -36,7 +36,7 @@ services:
     build:
       context: ./backend
       dockerfile: ../sevant-registry-docker/backend/Dockerfile
-    image: analyticsavant/sevant-registry-backend:v11
+    image: analyticsavant/sevant-registry-backend:v12
     ports:
       - "3001:3001"
     environment:
@@ -74,7 +74,7 @@ services:
     build:
       context: ./frontend
       dockerfile: ../sevant-registry-docker/frontend/Dockerfile
-    image: analyticsavant/sevant-registry-frontend:v11
+    image: analyticsavant/sevant-registry-frontend:v12
     ports:
       - "3000:3000"
     environment:
@@ -130,6 +130,32 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped
+    networks:
+      - app-network
+
+  welcome:
+    image: alpine:latest
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+      n8n:
+        condition: service_started
+    command: >
+      sh -c '
+      echo "╭─────────────────────────────────────────────────────────────────────────╮" &&
+      echo "│                                                                         │" &&
+      echo "│  Welcome to Sevant Registry                                             │" &&
+      echo "│                                                                         │" &&
+      echo "│  🌟 Frontend: http://localhost:3000                                     │" &&
+      echo "│  🔧 Backend: http://localhost:3001                                      │" &&
+      echo "│  🔄 n8n: http://localhost:5678                                          │" &&
+      echo "│                                                                         │" &&
+      echo "│  📊 MongoDB: mongodb://localhost:27017                                  │" &&
+      echo "│                                                                         │" &&
+      echo "╰─────────────────────────────────────────────────────────────────────────╯"
+      '
     networks:
       - app-network
 
