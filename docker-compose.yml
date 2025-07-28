@@ -36,7 +36,7 @@ services:
     build:
       context: ./backend
       dockerfile: ../sevant-registry-docker/backend/Dockerfile
-    image: analyticsavant/sevant-registry-backend:v12
+    image: analyticsavant/sevant-registry-backend:v13
     ports:
       - "3001:3001"
     environment:
@@ -74,7 +74,7 @@ services:
     build:
       context: ./frontend
       dockerfile: ../sevant-registry-docker/frontend/Dockerfile
-    image: analyticsavant/sevant-registry-frontend:v12
+    image: analyticsavant/sevant-registry-frontend:v13
     ports:
       - "3000:3000"
     environment:
