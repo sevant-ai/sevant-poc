@@ -16,19 +16,18 @@ services:
     image: mongo:5.0
     container_name: sevant-mongodb
     restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: sevant
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+      - MONGO_INITDB_DATABASE=sevant
     networks:
       - sevant-network
 
-  # Backend service (Docker Hub image)
+  # Backend service
   backend:
     image: analyticsavant/sevant-registry-backend:v20
     container_name: sevant-backend
@@ -46,10 +45,10 @@ services:
       - mongodb
     networks:
       - sevant-network
-    volumes:
-      - ./backend/uploads:/app/uploads
+    # volumes:
+      # - ./backend/uploads:/app/uploads
 
-  # Frontend service (Docker Hub image)
+  # Frontend service
   frontend:
     image: analyticsavant/sevant-registry-frontend:v20
     container_name: sevant-frontend
