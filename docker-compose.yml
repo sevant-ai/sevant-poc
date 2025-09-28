@@ -71,8 +71,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - /Users/mern/Dev/sevant/sevant-prod/nginx.conf:/etc/nginx/nginx.conf:ro
+    # No volume mounts - using default nginx configuration
+    # Users can access services directly:
+    # - Frontend: http://localhost:3000
+    # - Backend: http://localhost:3001
     depends_on:
       - frontend
       - backend
