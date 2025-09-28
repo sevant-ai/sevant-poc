@@ -8,161 +8,81 @@
 # DO NOT USE IT IN PRODUCTION
 ####################################################################################################
 
+version: '3.8'
+
 services:
+  # MongoDB service
   mongodb:
     image: mongo:5.0
     container_name: sevant-mongodb
     restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: sevant
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password123
-      - MONGO_INITDB_DATABASE=sevant
-    command: ["mongod", "--auth", "--bind_ip_all"]
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
     networks:
-      - app-network
+      - sevant-network
 
+  # Backend service (Docker Hub image)
   backend:
-    build:
-      context: ./backend
-      dockerfile: ../sevant-registry-docker/backend/Dockerfile
-    image: analyticsavant/sevant-registry-backend:v14
+    image: analyticsavant/sevant-registry-backend:v20
+    container_name: sevant-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/sevant?authSource=admin
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      CORS_ORIGINS: http://localhost:3000,http://frontend:3000
+      SWAGGER_API_BASE_URL: https://api.swaggerhub.com/
     ports:
       - "3001:3001"
-    environment:
-      - NODE_ENV=production      
-      - SWAGGER_API_BASE_URL=https://api.swaggerhub.com/     
-      - JWT_SECRET=jwtsecret
-      - N8N_URL=http://n8n:5678
-      - FORGET_PASSWORD_BASE_URL_SERVER=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}/
-      # MongoDB connection with authentication
-      - MONGODB_URI=mongodb://admin:password123@sevant-mongodb:27017/sevant_registry?authSource=admin
-      - DB_HOST=sevant-mongodb
-      - DB_PORT=27017
-      - DB_NAME=sevant_registry
-      - DB_USER=admin
-      - DB_PASSWORD=password123
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - app-network
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     depends_on:
-      mongodb:
-        condition: service_healthy
-      n8n:
-        condition: service_started
+      - mongodb
+    networks:
+      - sevant-network
+    volumes:
+      - ./backend/uploads:/app/uploads
 
+  # Frontend service (Docker Hub image)
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: ../sevant-registry-docker/frontend/Dockerfile
-    image: analyticsavant/sevant-registry-frontend:v14
+    image: analyticsavant/sevant-registry-frontend:v20
+    container_name: sevant-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      - NEXT_PUBLIC_N8N_URL=http://localhost:5678
     depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - backend
     networks:
-      - app-network
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - sevant-network
 
-  n8n:
-    image: n8nio/n8n
-    command: start
-    ports:
-      - "5678:5678"
-    environment:
-      - DEBUG=*
-      - N8N_HOST=${N8N_HOST:-localhost}
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
-      - NODE_ENV=production
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
-      - GENERIC_TIMEZONE=${N8N_GENERIC_TIMEZONE:-UTC}
-      - N8N_USER_MANAGEMENT_DISABLED=true
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-password}
-      - N8N_DIAGNOSTICS_ENABLED=true
-      - N8N_DIAGNOSTICS_CONFIG_ENABLED=true
-      - N8N_DIAGNOSTICS_MODE=debug
-      - N8N_DB_TYPE=sqlite
-      - N8N_DB_SQLITE_VACUUM_ON_STARTUP=true
-      - N8N_DB_SQLITE_EXECUTION_MODE=regular
-      - N8N_DB_SQLITE_DISABLE_WAL=true
-      - N8N_LOG_LEVEL=debug
-      - N8N_LOG_OUTPUT=console
-      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=false
-      - N8N_DISABLE_WEBHOOK_DEREGISTRATION_SHUTDOWN=true
-      - N8N_DISABLE_WORKFLOW_LOCKING=false
-      - N8N_DISABLE_WORKFLOW_SAVE_ON_EXECUTION=false
-    volumes:
-      - n8n_data:/home/node/.n8n
+  # Nginx reverse proxy (HTTP only, no SSL)
+  nginx:
+    image: nginx:alpine
+    container_name: sevant-nginx
     restart: unless-stopped
-    networks:
-      - app-network
-
-  welcome:
-    image: alpine:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      frontend:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
-      n8n:
-        condition: service_started
-    command: >
-      sh -c '
-      echo "╭─────────────────────────────────────────────────────────────────────────╮" &&
-      echo "│                                                                         │" &&
-      echo "│  Welcome to Sevant Registry                                             │" &&
-      echo "│                                                                         │" &&
-      echo "│  🌟 Frontend: http://localhost:3000                                     │" &&
-      echo "│  🔧 Backend: http://localhost:3001                                      │" &&
-      echo "│  🔄 n8n: http://localhost:5678                                          │" &&
-      echo "│                                                                         │" &&
-      echo "│  📊 MongoDB: mongodb://localhost:27017                                  │" &&
-      echo "│                                                                         │" &&
-      echo "╰─────────────────────────────────────────────────────────────────────────╯"
-      '
+      - frontend
+      - backend
     networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
+      - sevant-network
 
 volumes:
-  n8n_data:
   mongodb_data:
+
+networks:
+  sevant-network:
+    driver: bridge
