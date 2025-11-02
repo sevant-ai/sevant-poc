@@ -29,7 +29,7 @@ services:
 
   # Backend service
   backend:
-    image: analyticsavant/sevant-registry-backend:v20
+    image: analyticsavant/sevant-registry-backend:v21
     container_name: sevant-backend
     restart: unless-stopped
     environment:
@@ -50,7 +50,7 @@ services:
 
   # Frontend service
   frontend:
-    image: analyticsavant/sevant-registry-frontend:v20
+    image: analyticsavant/sevant-registry-frontend:v21
     container_name: sevant-frontend
     restart: unless-stopped
     environment:
