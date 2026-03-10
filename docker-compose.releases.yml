@@ -1,0 +1,71 @@
+# Sevant Registry — one-line start
+#
+#   curl -L https://releases.sevant.ai -o docker-compose.yml && docker compose up
+#
+# Then open http://localhost:3000
+#
+# Optional: create a .env in this directory to set:
+#   LICENSE_KEY=<your-signed-license-key>
+#   JWT_SECRET=<random-secret-for-production>
+# Without LICENSE_KEY the app runs in free-plan mode.
+
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: sevant-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: sevant
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - sevant-network
+
+  backend:
+    image: analyticsavant/sevant-registry-backend:latest
+    container_name: sevant-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: "0.0.0.0"
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/sevant?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:verysecurejwtsecret}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://frontend:3000}
+      SWAGGER_API_BASE_URL: https://api.swaggerhub.com/
+      LICENSE_KEY: ${LICENSE_KEY:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mongodb
+    networks:
+      - sevant-network
+
+  frontend:
+    image: analyticsavant/sevant-registry-frontend:latest
+    container_name: sevant-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ""
+      API_BASE_URL: http://backend:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - sevant-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  sevant-network:
+    driver: bridge
