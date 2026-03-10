@@ -9,7 +9,7 @@
 #   JWT_SECRET=<random-secret-for-production>
 # Without LICENSE_KEY the app runs in free-plan mode.
 
-version: '3.8'
+version: '4.1'
 
 services:
   mongodb:
@@ -36,10 +36,10 @@ services:
       PORT: 3001
       HOST: "0.0.0.0"
       MONGODB_URI: mongodb://admin:password123@mongodb:27017/sevant?authSource=admin
-      JWT_SECRET: ${JWT_SECRET:verysecurejwtsecret}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://frontend:3000}
+      JWT_SECRET: verysecurejwtsecret
+      CORS_ORIGINS: http://localhost:3000,http://frontend:3000
       SWAGGER_API_BASE_URL: https://api.swaggerhub.com/
-  
+      LICENSE_KEY: ""
     ports:
       - "3001:3001"
     depends_on:
