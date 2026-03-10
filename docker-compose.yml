@@ -28,7 +28,7 @@ services:
       - sevant-network
 
   backend:
-    image: analyticsavant/sevant-registry-backend:28
+    image: analyticsavant/sevant-registry-backend:latest
     container_name: sevant-backend
     restart: unless-stopped
     environment:
@@ -48,7 +48,7 @@ services:
       - sevant-network
 
   frontend:
-    image: analyticsavant/sevant-registry-frontend:28
+    image: analyticsavant/sevant-registry-frontend:latest
     container_name: sevant-frontend
     restart: unless-stopped
     environment:
