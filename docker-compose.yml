@@ -2,7 +2,7 @@
 #
 #   curl -L https://releases.sevant.ai -o docker-compose.yml && docker compose up
 #
-# Then open http://localhost:3000  (nginx proxies API calls to backend)
+# Then open http://localhost:3000  (nginx routes API calls to the backend)
 #
 # Optional: create a .env in this directory to set:
 #   LICENSE_KEY=<your-signed-license-key>
@@ -61,6 +61,7 @@ services:
     networks:
       - sevant-network
 
+  # Required: Hub images use relative API URLs; nginx proxies /manual-specs etc. to backend
   nginx:
     image: nginx:alpine
     container_name: sevant-nginx
@@ -103,29 +104,29 @@ configs:
               location ~ ^/(user|specs|role|manual-specs|workflows|solution-architect|context-relationships|license|feature-flags|ddcl|api-clusters|team-specs|system-settings) {
                   proxy_pass http://backend;
                   proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_set_header Host $$host;
+                  proxy_set_header X-Real-IP $$remote_addr;
+                  proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $$scheme;
                   proxy_set_header X-Frontend-Request "true";
               }
 
               location /api/health {
                   proxy_pass http://backend;
-                  proxy_set_header Host $host;
+                  proxy_set_header Host $$host;
                   proxy_set_header X-Frontend-Request "true";
               }
 
               location / {
                   proxy_pass http://frontend;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Upgrade $$http_upgrade;
                   proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header Host $$host;
+                  proxy_set_header X-Real-IP $$remote_addr;
+                  proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $$scheme;
+                  proxy_cache_bypass $$http_upgrade;
               }
           }
       }
